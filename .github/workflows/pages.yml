@@ -4,6 +4,7 @@ name: 網站上線
 on:
   push:
     branches: [main]
+  pull_request:   # 開 PR 時也先跑測試，合併前就知道有沒有問題
   workflow_dispatch:
 
 permissions:
@@ -13,7 +14,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   test:
@@ -28,6 +29,7 @@ jobs:
 
   deploy:
     needs: test
+    if: github.event_name != 'pull_request'   # PR 只跑測試，不上線
     runs-on: ubuntu-latest
     environment:
       name: github-pages

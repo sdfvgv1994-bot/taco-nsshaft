@@ -25,7 +25,7 @@ def test_page_files():
     html = HTML.read_text(encoding="utf-8")
     assert '<meta name="app-version" content="dev">' in html
     assert 'id="ver"' in html
-    assert re.search(r"canvas\s*\{[^}]*max-width:\s*100%", html)
+    assert re.search(r"canvas\s*\{[^}]*width:\s*min\(400px, 100%", html)  # 依手機寬、高縮放
     assert "NS-SHAFT" not in html  # 公開版不掛原作名稱
     wf = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
     assert "pytest" in wf and "needs: test" in wf and "app-version" in wf
@@ -88,6 +88,7 @@ def test_game_over_only_once():
 def test_pause_does_not_fast_forward():
     """暫停 3 秒再繼續，平台不能一口氣狂跑（之前的 bug：恢復時把暫停的時間補跑）。"""
     r = run("""
+      setSpeed('fast');  // 最快速度下差距最明顯：舊 bug 會移動約 18，正常只有 1～2
       frame(16); frame(16);
       const before = platforms[0].y;
       togglePause();
@@ -97,7 +98,7 @@ def test_pause_does_not_fast_forward():
       return {moved: Math.abs(platforms[0].y - before), s: gameState};
     """)
     assert r["s"] == "PLAY"
-    assert r["moved"] < 10
+    assert r["moved"] < 5
 
 
 def test_speed_keys_update_buttons():
@@ -133,8 +134,8 @@ def test_floor_counts_up_and_platforms_refill():
     """平台捲到頂會消失、樓層 +1，底下補新平台，數量不會變少。"""
     r = run("""
       const n = platforms.length;
-      player.invincible = 9999;  // 測試期間不受傷
-      step(600);
+      // 每一步都把角色放回畫面中間，確保不會掉下去或撞到天花板，只看樓層計數
+      for (let i = 0; i < 600; i++) { player.y = 200; player.vy = 0; step(1); }
       return {f: floor, n0: n, n1: platforms.length};
     """)
     assert r["f"] > 1
@@ -155,3 +156,32 @@ def test_broken_storage_does_not_crash():
       return {s: gameState, best: bestRecord};
     """)
     assert r == {"s": "GAMEOVER", "best": 30}
+
+
+def test_first_platform_under_player():
+    """開局第一塊平台一定在角色正下方，不操作也不會馬上掉下去。"""
+    r = run("""
+      const p = platforms[0], cx = player.x + player.w / 2;
+      step(90);  // 1.5 秒不動
+      return {under: p.x <= cx && cx <= p.x + p.w, s: gameState, on: player.standingOn === p};
+    """)
+    assert r == {"under": True, "s": "PLAY", "on": True}
+
+
+def test_spring_near_ceiling_not_repeated():
+    """彈簧靠近天花板：撞到刺一次就從彈簧掉下去，不會被同一個彈簧連續彈上去一直扣血。"""
+    r = run("""
+      platforms = [{x: 100, y: 100, w: 90, h: 14, type: 'spring', flip: 0, broken: false, stepped: false}];
+      player.x = 130; player.y = 100 - player.h - 2; player.vy = 1; player.invincible = 0;
+      let bounces = 0, prevVy = 0;
+      for (let i = 0; i < 60 && gameState === 'PLAY'; i++) {  // 1 秒內（之後角色會正常掉出畫面）
+        step(1);
+        if (player.vy < -5 && prevVy >= 0) bounces++;
+        prevVy = player.vy;
+      }
+      return {bounces, hp: player.hp, dropped: player.y > platforms[0].y};
+    """)
+    assert r["bounces"] <= 1
+    assert r["hp"] >= 8
+    assert r["dropped"]  # 已經掉到彈簧下面
+

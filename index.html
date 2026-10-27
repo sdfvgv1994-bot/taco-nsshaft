@@ -6,7 +6,7 @@
   <title>taco 下樓梯</title>
   <meta name="app-version" content="dev">
   <style>
-    * { box-sizing: border-box; user-select: none; }
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     body {
       margin: 0;
       padding: 0;
@@ -37,7 +37,7 @@
       background-color: #000;
       display: block;
       border: 2px solid #334155;
-      max-width: 100%;
+      width: min(400px, 100%, calc((100vh - 80px) * 400 / 480));
       height: auto;
       touch-action: none;
     }
@@ -116,10 +116,11 @@
       margin-top: 8px;
       gap: 8px;
     }
-    @media (max-width: 768px) {
+    @media (max-width: 768px), (pointer: coarse) {
       .touch-bar { display: flex; }
     }
     .touch-btn {
+      touch-action: none;
       flex: 1;
       height: 52px;
       background: #334155;
@@ -320,11 +321,11 @@ const keys = { left: false, right: false };
 const player = {
   x: 188, y: 80, w: 22, h: 28, vx: 0, vy: 0, speed: 3.4,
   hp: 12, maxHp: 12, facing: 1, standingOn: null,
-  invincible: 0, hurtTimer: 0, walkCycle: 0,
+  invincible: 0, hurtTimer: 0, walkCycle: 0, lastPlatform: null, passThrough: null,
   reset() {
     this.x = 188; this.y = 80; this.vx = 0; this.vy = 0;
     this.hp = 12; this.standingOn = null; this.invincible = 0;
-    this.hurtTimer = 0; this.walkCycle = 0;
+    this.hurtTimer = 0; this.walkCycle = 0; this.lastPlatform = null; this.passThrough = null;
   }
 };
 
@@ -336,10 +337,10 @@ function setSpeed(mode) {
   });
 }
 
-function spawnPlatform(y, type = null) {
+function spawnPlatform(y, type = null, fixedX = null) {
   const minX = WALL + 4;
   const maxX = WIDTH - WALL - 90 - 4;
-  const x = Math.floor(minX + Math.random() * (maxX - minX));
+  const x = fixedX !== null ? fixedX : Math.floor(minX + Math.random() * (maxX - minX));
   const pool = ['normal', 'normal', 'normal', 'spikes', 'flip', 'conveyor_l', 'conveyor_r', 'spring'];
   const pType = type || pool[Math.floor(Math.random() * pool.length)];
   platforms.push({
@@ -355,7 +356,7 @@ function initGame() {
   particles = [];
   shards = [];
   screenShake = 0;
-  spawnPlatform(190, 'normal');
+  spawnPlatform(190, 'normal', player.x + player.w / 2 - 45);  // 開局站穩，不會一打開就掉下去
   for (let y = 190 + 66; y < HEIGHT + 100; y += 66) spawnPlatform(y);
 }
 
@@ -413,6 +414,7 @@ function updatePhysics() {
   // 天花板刺
   if (player.y <= SPIKE_H + 2) {
     player.y = SPIKE_H + 2; player.vy = 1.6;
+    player.passThrough = player.lastPlatform; player.standingOn = null;
     if (player.invincible <= 0) {
       player.hp = Math.max(0, player.hp - 4);
       player.invincible = 50; player.hurtTimer = 25;
@@ -431,7 +433,7 @@ function updatePhysics() {
   // 碰撞
   let standing = false;
   for (let p of platforms) {
-    if (p.broken) continue;
+    if (p.broken || p === player.passThrough) continue;
     const feet = player.y + player.h;
     const prevFeet = feet - player.vy;
     if (player.x + player.w - 4 >= p.x && player.x + 4 <= p.x + p.w &&
@@ -439,6 +441,7 @@ function updatePhysics() {
       player.y = p.y - player.h;
       player.vy = 0;
       player.standingOn = p;
+      player.lastPlatform = p; player.passThrough = null;
       standing = true;
       if (!p.stepped) { p.stepped = true; sound.playLand(); }
 
@@ -568,7 +571,8 @@ function draw() {
     ctx.restore();
   }
 
-  // HUD
+  // HUD（深色底，字不會跟尖刺混在一起）
+  ctx.fillStyle = 'rgba(3,8,22,0.75)'; ctx.fillRect(22, 10, 104, 28); ctx.fillRect(184, 10, 116, 26);
   ctx.font = 'bold 12px monospace'; ctx.fillStyle = '#ec4899'; ctx.fillText('LIFE', 26, 22);
   for (let i = 0; i < player.maxHp; i++) {
     ctx.fillStyle = (i < Math.floor(player.hp)) ? (player.hp <= 3 ? '#ef4444' : '#facc15') : '#450a0a';
@@ -636,6 +640,7 @@ window.addEventListener('keydown', e => {
   if (e.key === '3') setSpeed('classic');
   if (e.key === '4') setSpeed('fast');
 });
+['pointerdown', 'keydown'].forEach(t => window.addEventListener(t, () => sound.init(), { once: true }));
 window.addEventListener('blur', () => { keys.left = false; keys.right = false; });
 window.addEventListener('keyup', e => {
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
