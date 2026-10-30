@@ -31,3 +31,8 @@ btnR.addEventListener('pointercancel', () => keys.right = false);
 btnR.addEventListener('pointerleave', () => keys.right = false);
 canvas.addEventListener('pointerdown', () => { if (gameState === 'GAMEOVER') restart(); });
 btnP.addEventListener('click', () => togglePause());  // 用箭頭函式：按下去時才找 togglePause（它在主迴圈積木裡，比這個積木晚載入）
+
+// 面板按鈕（以前寫在 HTML 的 onclick 裡；放在這裡，程式還沒載完時點了只是沒反應，不會報錯）
+document.querySelectorAll('.speed-btn').forEach(b => b.addEventListener('click', () => setSpeed(b.dataset.mode)));
+document.getElementById('pauseBtn').addEventListener('click', () => togglePause());
+document.getElementById('restartBtn').addEventListener('click', () => restart());

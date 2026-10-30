@@ -24,7 +24,7 @@ BLOCKS = ["sound", "config", "state", "physics", "draw", "input", "main"]
 
 
 def script_srcs():
-    return re.findall(r'<script src="([^"]+)"></script>', HTML.read_text(encoding="utf-8"))
+    return re.findall(r'<script\b[^>]*\bsrc="([^"]+)"', HTML.read_text(encoding="utf-8"))
 
 
 def test_page_files():
@@ -54,7 +54,7 @@ def test_deploy_copies_all_blocks():
     wf = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
     assert re.search(r"cp -r index\.html style\.css js site/", wf)
     assert 's#?v=dev\\"#?v=$v\\"#g' in wf  # 換版本號
-    assert '! grep -q "v=dev"' in wf  # 有漏換就讓上線失敗
+    assert 'if grep -q "v=dev" site/index.html; then' in wf and "exit 1" in wf  # 有漏換就讓上線失敗
 
 
 def test_script_syntax():
@@ -161,6 +161,18 @@ def test_touch_pause_button():
       __fire('btnPause', 'click'); return [a, gameState];
     """)
     assert r == ["PAUSED", "PLAY"]
+
+
+def test_panel_buttons():
+    """面板按鈕：速度、暫停、重新開始都綁在操作積木裡，HTML 不再寫 onclick。"""
+    assert "onclick" not in HTML.read_text(encoding="utf-8")
+    r = run("""
+      __fire('speed-fast', 'click'); const m = currentMode;
+      __fire('pauseBtn', 'click'); const a = gameState;
+      floor = 5; __fire('restartBtn', 'click');
+      return {m, a, s: gameState, f: floor, txt: document.getElementById('pauseBtn').innerText};
+    """)
+    assert r == {"m": "fast", "a": "PAUSED", "s": "PLAY", "f": 1, "txt": "暫停遊戲 [P]"}
 
 
 def test_floor_counts_up_and_platforms_refill():

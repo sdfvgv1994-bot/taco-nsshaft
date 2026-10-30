@@ -8,7 +8,8 @@ const vm = require('vm');
 // 照 index.html 裡 <script src> 的順序讀進每個積木
 const htmlPath = process.argv[2];
 const html = fs.readFileSync(htmlPath, 'utf8');
-const srcs = [...html.matchAll(/<script src="([^"?]+)(?:\?[^"]*)?"><\/script>/g)].map(m => m[1]);
+// 任何 <script ... src="..."> 寫法都認得（例如以後加了 defer），不會悄悄跳過某個積木
+const srcs = [...html.matchAll(/<script\b[^>]*\bsrc="([^"?]+)(?:\?[^"]*)?"/g)].map(m => m[1]);
 if (!srcs.length) throw new Error('index.html 裡找不到 <script src>');
 const blocks = srcs.map(s => ({ name: s, code: fs.readFileSync(path.join(path.dirname(htmlPath), s), 'utf8') }));
 const testCode = process.argv[3];
@@ -21,7 +22,10 @@ const fire = (target, type, ev = {}) => (listeners[target + ':' + type] || []).f
 const ctx2d = new Proxy({}, { get: (o, k) => (k in o ? o[k] : () => {}), set: (o, k, v) => { o[k] = v; return true; } });
 
 const els = {};
+// 只認 index.html 裡真的有的 id（加上測試用的速度按鈕），程式裡 id 打錯字就會在測試報錯
+const knownIds = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]));
 function el(id) {
+  if (!els[id] && !knownIds.has(id) && !id.startsWith('speed-')) throw new Error('index.html 裡沒有 id="' + id + '"');
   if (!els[id]) {
     els[id] = {
       id, innerText: '', textContent: '', dataset: {},

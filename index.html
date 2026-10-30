@@ -29,10 +29,10 @@
       <div class="speed-box">
         <div style="font-weight: bold; color: #facc15; font-size: 12px;">速度調節（解決太快）</div>
         <div class="btn-grid">
-          <button class="speed-btn" data-mode="relaxed" onclick="setSpeed('relaxed')">超慢 0.7x</button>
-          <button class="speed-btn active" data-mode="slow" onclick="setSpeed('slow')">舒適 1.0x</button>
-          <button class="speed-btn" data-mode="classic" onclick="setSpeed('classic')">原版 1.3x</button>
-          <button class="speed-btn" data-mode="fast" onclick="setSpeed('fast')">挑戰 1.8x</button>
+          <button class="speed-btn" data-mode="relaxed">超慢 0.7x</button>
+          <button class="speed-btn active" data-mode="slow">舒適 1.0x</button>
+          <button class="speed-btn" data-mode="classic">原版 1.3x</button>
+          <button class="speed-btn" data-mode="fast">挑戰 1.8x</button>
         </div>
       </div>
 
@@ -41,8 +41,8 @@
         <div id="recordText" style="font-size: 16px; font-weight: bold; color: #facc15;">地下 0001 階</div>
       </div>
 
-      <button class="action-btn sec-btn" id="pauseBtn" onclick="togglePause()">暫停遊戲 [P]</button>
-      <button class="action-btn" onclick="restart()">重新開始 [空白鍵]</button>
+      <button class="action-btn sec-btn" id="pauseBtn">暫停遊戲 [P]</button>
+      <button class="action-btn" id="restartBtn">重新開始 [空白鍵]</button>
 
       <div class="hints">
         <b>操作說明：</b><br>
