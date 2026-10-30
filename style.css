@@ -1,0 +1,125 @@
+/* taco 下樓梯：畫面樣式 */
+* { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0b0f19;
+  color: #f1f5f9;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+#cabinet {
+  background: #1e293b;
+  border: 4px solid #475569;
+  border-radius: 8px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85);
+  padding: 12px;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: flex-start;
+}
+@media (max-width: 720px) {
+  #cabinet { flex-direction: column; align-items: center; }
+}
+canvas {
+  background-color: #000;
+  display: block;
+  border: 2px solid #334155;
+  width: min(400px, 100%, calc((100vh - 80px) * 400 / 480));
+  height: auto;
+  touch-action: none;
+}
+#panel {
+  width: 220px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+}
+.title {
+  font-size: 20px;
+  font-weight: 900;
+  font-style: italic;
+  color: #f8fafc;
+  font-family: monospace;
+}
+.subtitle { font-size: 11px; color: #94a3b8; }
+.speed-box {
+  background: #1e293b;
+  border: 1px solid #b45309;
+  border-radius: 4px;
+  padding: 8px;
+}
+.btn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 6px;
+}
+button.speed-btn {
+  padding: 6px 4px;
+  font-size: 11px;
+  border: none;
+  border-radius: 4px;
+  background: #334155;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-weight: 600;
+}
+button.speed-btn.active {
+  background: #f59e0b;
+  color: #0f172a;
+}
+.action-btn {
+  width: 100%;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #f59e0b;
+  color: #0f172a;
+}
+.sec-btn {
+  background: #334155;
+  color: #f1f5f9;
+}
+.hints {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.4;
+  border-top: 1px solid #334155;
+  padding-top: 8px;
+}
+.touch-bar {
+  display: none;
+  width: 100%;
+  max-width: 400px;
+  justify-content: space-between;
+  margin-top: 8px;
+  gap: 8px;
+}
+@media (max-width: 768px), (pointer: coarse) {
+  .touch-bar { display: flex; }
+}
+.touch-btn {
+  touch-action: none;
+  flex: 1;
+  height: 52px;
+  background: #334155;
+  border: 1px solid #64748b;
+  border-radius: 6px;
+  color: #facc15;
+  font-size: 22px;
+  font-weight: bold;
+}

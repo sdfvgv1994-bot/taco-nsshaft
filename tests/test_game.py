@@ -20,23 +20,47 @@ def run(js):
     return json.loads(out.strip().splitlines()[-1])
 
 
+BLOCKS = ["sound", "config", "state", "physics", "draw", "input", "main"]
+
+
+def script_srcs():
+    return re.findall(r'<script\b[^>]*\bsrc="([^"]+)"', HTML.read_text(encoding="utf-8"))
+
+
 def test_page_files():
-    """網頁本身：單一檔案、有版本號欄位、手機寬度會縮放、部署流程先跑測試。"""
+    """網頁本身：有版本號欄位、手機寬度會縮放、部署流程先跑測試。"""
     html = HTML.read_text(encoding="utf-8")
+    css = (ROOT / "style.css").read_text(encoding="utf-8")
     assert '<meta name="app-version" content="dev">' in html
     assert 'id="ver"' in html
-    assert re.search(r"canvas\s*\{[^}]*width:\s*min\(400px, 100%", html)  # 依手機寬、高縮放
-    assert "NS-SHAFT" not in html  # 公開版不掛原作名稱
+    assert '<link rel="stylesheet" href="style.css?v=dev">' in html
+    assert re.search(r"canvas\s*\{[^}]*width:\s*min\(400px, 100%", css)  # 依手機寬、高縮放
+    for f in [HTML, ROOT / "style.css", *(ROOT / "js").glob("*.js")]:
+        assert "NS-SHAFT" not in f.read_text(encoding="utf-8"), f  # 公開版不掛原作名稱
     wf = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
     assert "pytest" in wf and "needs: test" in wf and "app-version" in wf
 
 
-def test_script_syntax(tmp_path):
-    """遊戲程式語法正確。"""
-    script = re.search(r"<script>(.*)</script>", HTML.read_text(encoding="utf-8"), re.S).group(1)
-    f = tmp_path / "game.js"
-    f.write_text(script, encoding="utf-8")
-    subprocess.run(["node", "--check", str(f)], check=True)
+def test_blocks_load_in_order():
+    """積木照固定順序載入、每個都帶 ?v=dev（上線換成版本號，手機才不會新舊檔混用），沒有內嵌程式。"""
+    assert script_srcs() == [f"js/{b}.js?v=dev" for b in BLOCKS]
+    assert "<script>" not in HTML.read_text(encoding="utf-8")
+    # js 資料夾裡沒有被忘記接上的積木
+    assert sorted(p.stem for p in (ROOT / "js").glob("*.js")) == sorted(BLOCKS)
+
+
+def test_deploy_copies_all_blocks():
+    """上線流程要把 css、js 一起放上去，並把每個 ?v=dev 換成版本號。"""
+    wf = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+    assert re.search(r"cp -r index\.html style\.css js site/", wf)
+    assert 's#?v=dev\\"#?v=$v\\"#g' in wf  # 換版本號
+    assert 'if grep -q "v=dev" site/index.html; then' in wf and "exit 1" in wf  # 有漏換就讓上線失敗
+
+
+def test_script_syntax():
+    """每個積木語法都正確。"""
+    for b in BLOCKS:
+        subprocess.run(["node", "--check", str(ROOT / "js" / f"{b}.js")], check=True)
 
 
 def test_start_state():
@@ -128,6 +152,27 @@ def test_touch_button_release_on_leave():
       return {held, after: keys.left};
     """)
     assert r == {"held": True, "after": False}
+
+
+def test_touch_pause_button():
+    """手機上的 ⏸ 按鈕要能暫停、再按一次繼續（拆積木時差點壞掉：按鈕綁定時暫停功能還沒載入）。"""
+    r = run("""
+      __fire('btnPause', 'click'); const a = gameState;
+      __fire('btnPause', 'click'); return [a, gameState];
+    """)
+    assert r == ["PAUSED", "PLAY"]
+
+
+def test_panel_buttons():
+    """面板按鈕：速度、暫停、重新開始都綁在操作積木裡，HTML 不再寫 onclick。"""
+    assert "onclick" not in HTML.read_text(encoding="utf-8")
+    r = run("""
+      __fire('speed-fast', 'click'); const m = currentMode;
+      __fire('pauseBtn', 'click'); const a = gameState;
+      floor = 5; __fire('restartBtn', 'click');
+      return {m, a, s: gameState, f: floor, txt: document.getElementById('pauseBtn').innerText};
+    """)
+    assert r == {"m": "fast", "a": "PAUSED", "s": "PLAY", "f": 1, "txt": "暫停遊戲 [P]"}
 
 
 def test_floor_counts_up_and_platforms_refill():
