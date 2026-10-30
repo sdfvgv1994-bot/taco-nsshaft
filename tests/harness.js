@@ -1,11 +1,16 @@
-// 在 node 裡跑 index.html 的遊戲程式：用假的瀏覽器物件頂替畫面、按鍵、存檔，
+// 在 node 裡跑遊戲程式：用假的瀏覽器物件頂替畫面、按鍵、存檔，
 // 然後執行測試要的那段程式，把結果用 JSON 印出來給 pytest 看。
 // 用法：node harness.js <index.html 路徑> <測試程式>
 const fs = require('fs');
+const path = require('path');
 const vm = require('vm');
 
-const html = fs.readFileSync(process.argv[2], 'utf8');
-const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
+// 照 index.html 裡 <script src> 的順序讀進每個積木
+const htmlPath = process.argv[2];
+const html = fs.readFileSync(htmlPath, 'utf8');
+const srcs = [...html.matchAll(/<script src="([^"?]+)(?:\?[^"]*)?"><\/script>/g)].map(m => m[1]);
+if (!srcs.length) throw new Error('index.html 裡找不到 <script src>');
+const blocks = srcs.map(s => ({ name: s, code: fs.readFileSync(path.join(path.dirname(htmlPath), s), 'utf8') }));
 const testCode = process.argv[3];
 
 const listeners = {};
@@ -47,7 +52,9 @@ const sandbox = {
 };
 sandbox.window = { addEventListener: on('window'), AudioContext: undefined };
 vm.createContext(sandbox);
-// let/const 宣告的全域變數只在同一段程式裡看得到，所以把測試程式接在遊戲程式後面一起跑
+// 每個積木分開跑，跟瀏覽器一個一個 <script> 載入一樣：
+// 前面積木的 let/const 後面看得到，但後面才寫的函式，前面載入時還不存在（載入順序寫錯就會在這裡報錯）
+for (const b of blocks) vm.runInContext(b.code, sandbox, { filename: b.name });
 const helpers = `
   const __fire = this.__fire, __store = this.__store, __btns = this.__btns;
   // 跑 n 個物理步（1/60 秒一步），模擬遊戲在進行
@@ -57,5 +64,5 @@ const helpers = `
   function frame(ms) { __t += ms; loop(__t); }
 `;
 sandbox.__fire = fire; sandbox.__store = store; sandbox.__btns = speedBtns;
-const out = vm.runInContext(script + helpers + '\n;(function(){' + testCode + '\n})()', sandbox);
+const out = vm.runInContext(helpers + '\n;(function(){' + testCode + '\n})()', sandbox);
 console.log(JSON.stringify(out));
