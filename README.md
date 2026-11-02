@@ -1,5 +1,9 @@
 # taco 下樓梯
 
+### 👉 [點這裡開始玩](https://sdfvgv1994-bot.github.io/taco-nsshaft/)
+
+網址：https://sdfvgv1994-bot.github.io/taco-nsshaft/ （電腦、手機都能玩）
+
 小朋友下樓梯玩法的網頁小遊戲：左右移動踩平台往下走，別碰到天花板的尖刺，也別掉下去。
 
 - 電腦：← → 或 A D 移動，1～4 切速度，P 暫停，空白鍵重開
